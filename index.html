@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+     Biodiversity Heritage Library - PubMapper
+    </title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8">
+    <link href="./css/jquery-ui.css" rel="stylesheet" type="text/css">
+    <link href="./css/default.css" rel="stylesheet" type="text/css">
+
+    <script src="./data.js"></script>
+    <script type="text/javascript">
+
+      var map;
+
+
+      function initialize() {
+        var myOptions = {
+          zoom: 2,
+          center: new google.maps.LatLng(17.5,15.0),
+          mapTypeId: google.maps.MapTypeId.TERRAIN
+        };
+
+        map = new google.maps.Map(document.getElementById('map_canvas'),
+            myOptions);
+
+      }
+
+      function addCircle(themap, pub){
+            var circle = new google.maps.Circle({
+              map: themap,
+              radius: pub.num*700000/(1 + map.getZoom()),
+              fillColor: '#cc0000',
+              fillOpacity: 0.6,
+              strokeColor: '#000000',
+              strokeOpacity: 0.8,
+              strokeWeight: 2,
+              center: new google.maps.LatLng(pub.lat, pub.lon)
+              });
+
+              fadeCircle(circle, 1);
+
+      }
+      function fadeCircle(c, o){
+            o-=0.2;
+            if(o <= 0.2){
+                c.setMap(null);
+            }
+            else{
+                c.setOptions({fillOpacity: o, strokeOpacity: o});
+                setTimeout( function(){
+                    fadeCircle(c,o);
+                    }, 150);
+            }
+      }
+
+      function loadScript() {
+        var script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'http://maps.googleapis.com/maps/api/js?sensor=false&' +
+            'callback=initialize';
+        document.body.appendChild(script);
+      }
+
+      window.onload = loadScript;
+    </script>
+  </head>
+  <body>
+    <div id="heading"><h1>Biodiversity Heritage Library PubMapper</h1>
+    </div>
+    <div id="map_canvas"></div>
+    <div id="controls">
+        <button id="play">play</button>
+        <div id="slider"></div>
+    </div>
+    <div id="footer">Written by <a href="http://peter.neish.net/">Peter Neish</a> for the 
+    life and literature <a href="http://www.lifeandliterature.org/p/code-challenge.html">Code Challenge</a> 2011. 
+    Data from the <a href="http://www.biodiversitylibrary.org/">Biodiversity Heritage Library</a>.<br /> Best viewed in Chrome or Firefox (IE get a bit slow). 
+    Further details <a href="http://peter.neish.net/life-and-literature-code-challenge">here</a>.
+    </div>
+
+<!-- javascript -->
+
+<!-- Grab Google CDN's jQuery. fall back to local if necessary -->
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+<script>window.jQuery || document.write("<script src='/js/jquery-1.5.1.min.js'>\x3C/script>")</script>
+
+<!-- and same for ui -->
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+<script>window.jQuery.ui || document.write("<script src='/js/jquery-ui.min.js'>\x3C/script>")</script>
+
+
+    <script>
+        var intID;
+        var throttle = 10; // cut off if more than this in one year
+        if($.browser.msie){
+            throttle = 2;
+        }    
+
+        var timer_running = 0;
+        var resume = 0;
+        var year = 1480;
+        var slider = $( "#slider" ).slider({
+            value: year,
+            min: year, 
+            max:2011, 
+            animate: false,
+            create: function(event, ui){
+                $(".ui-slider .ui-slider-handle").html($(this).slider( "option", "min"));
+            },
+            slide: function(event, ui){
+                $(".ui-slider .ui-slider-handle").html(slider.slider( "option", "value"));
+                $("#play").button("option", {label: "play", icons: {primary: "ui-icon-play"}});
+                year = slider.slider( "option", "value");
+                if(timer_running){
+                    stopTimer();
+                    resume = 1;
+                }
+            },
+            change: function(event, ui){
+                // return to end
+                if(slider.slider("option","value") == slider.slider("option", "max")){
+                    stopTimer();
+                    //$(".ui-slider .ui-slider-handle").html(slider.slider( "option", "value"));
+                    $("#play").button("option", {label : "replay", icons: {primary : "ui-icon-arrowreturnthick-1-w"}});
+                }
+                
+            },
+            stop: function(event, ui){
+                if(resume){
+                    startTimer();
+                    resume = 0;
+                }    
+            }
+        });
+
+        $("#play").button({icons:  { primary: "ui-icon-play"}}).click(function(){
+  
+            if(slider.slider("option", "value") == slider.slider("option", "max")){
+                slider.slider("value", slider.slider("option", "min"));
+                year = slider.slider("option", "min");
+            }    
+
+            if(timer_running){
+                stopTimer();
+            }
+            else{
+                startTimer();
+            }
+
+        return false;
+        });
+        function startTimer(){
+            timer_running=1;
+            $("#play").button("option", {label : "pause", icons: {primary : "ui-icon-pause"}});
+                intID = setInterval( function(){
+                       animateSlider(slider);
+                }, 120);
+        }
+
+        function stopTimer(){
+            timer_running=0;
+            clearInterval(intID);
+            $("#play").button("option", {label: "play", icons: {primary: "ui-icon-play"}});
+
+        }
+
+        function animateSlider(sl){
+
+            sl.slider("value", year);
+            $(".ui-slider .ui-slider-handle").html(year);
+            if(typeof pubs[year] !== undefined){
+                for(key in pubs[year] ){
+                    // limit if there are lots in one year
+                    if(key >= throttle ){
+                        break;
+                    }    
+                   addCircle(map, pubs[year][key]);
+                }
+            }
+            year+=1;
+        }
+   </script>
+
+</body>
+</html>
